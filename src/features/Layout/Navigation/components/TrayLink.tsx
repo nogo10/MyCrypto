@@ -16,10 +16,10 @@ const SBox = styled(Box)`
 `;
 
 export const TrayLink = ({ item }: { item: IExternalLink }) => {
-  const { track } = useAnalytics();
+  const { trackLink } = useAnalytics();
 
   const handleClick = () => {
-    track({ name: 'Link clicked', params: { url: item.link } });
+    trackLink({ url: item.link });
   };
 
   return (

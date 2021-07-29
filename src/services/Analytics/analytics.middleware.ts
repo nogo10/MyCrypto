@@ -18,25 +18,40 @@ export const analyticsMiddleware: Middleware<TObject, any, Dispatch<Action>> = (
 ) => (action) => {
   switch (action.type) {
     case addAccounts.type: {
-      state.dispatch(
-        trackEvent({
-          action: 'Add Account'
-          /*params: {
-            qty: action.payload.length,
-            // multiple add accounts are always of the same type and network
-            walletId: action.payload[0].wallet,
-            networkId: action.payload[0].networkId
-          }*/
-        })
-      );
+      // multiple add accounts are always of the same type and network
+      for (let i = 0; i < action.payload.length; i++) {
+        state.dispatch(
+          trackEvent({
+            action: 'Add Account',
+            customDimensions: [
+              {
+                id: 1,
+                value: action.payload[0].wallet
+              },
+              {
+                id: 2,
+                value: action.payload[0].networkId
+              }
+            ]
+          })
+        );
+      }
       break;
     }
     // Track custom token creation. Is also triggered on custom network.
     case createAsset.type: {
       state.dispatch(
         trackEvent({
-          action: 'Add Asset'
-          //params: action.payload
+          action: 'Add Asset',
+          name: action.payload.ticker,
+          customDimensions: action.payload.contractAddress
+            ? [
+                {
+                  id: 3,
+                  value: action.payload.contractAddress
+                }
+              ]
+            : []
         })
       );
       break;

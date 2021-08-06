@@ -1,7 +1,11 @@
 import { Network, StoreAccount, WalletId } from '@types';
 
 // @todo Figure out if anything else needs to be disabled?
-const ENABLED_WALLETS = [WalletId.LEDGER_NANO_S, WalletId.LEDGER_NANO_S_NEW];
+const ENABLED_WALLETS = [
+  WalletId.LEDGER_NANO_S,
+  WalletId.LEDGER_NANO_S_NEW,
+  WalletId.WALLETCONNECT
+];
 
 const featureFlagName = 'MYC_EIP1559';
 

@@ -62,7 +62,7 @@ describe('unlockWeb3', () => {
       method: 'wallet_getPermissions',
       params: []
     });
-    expect(wallets.map((w) => w.getAddressString())).toEqual([fAccount.address]);
+    expect(wallets.map((w) => w.getAddress())).toEqual([fAccount.address]);
   });
 
   it('falls back to eth_accounts', async () => {
@@ -91,7 +91,7 @@ describe('unlockWeb3', () => {
       method: 'eth_accounts',
       params: []
     });
-    expect(wallets.map((w) => w.getAddressString())).toEqual([fAccount.address]);
+    expect(wallets.map((w) => w.getAddress())).toEqual([fAccount.address]);
   });
 
   it('supports legacy web3', async () => {
@@ -99,7 +99,6 @@ describe('unlockWeb3', () => {
     customWindow.web3 = {
       currentProvider: {
         sendAsync: jest.fn().mockImplementation(async ({ method }, callback) => {
-          console.log(method);
           if (method === 'eth_chainId') {
             return callback(null, { result: 1 });
           } else if (method === 'eth_accounts') {
@@ -131,7 +130,7 @@ describe('unlockWeb3', () => {
       }),
       expect.any(Function)
     );
-    expect(wallets.map((w) => w.getAddressString())).toEqual([fAccount.address]);
+    expect(wallets.map((w) => w.getAddress())).toEqual([fAccount.address]);
   });
 
   it('fails if window.ethereum is null', async () => {

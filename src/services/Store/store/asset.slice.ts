@@ -3,7 +3,8 @@ import { all, call, put, takeLatest } from 'redux-saga/effects';
 
 import { EXCLUDED_ASSETS } from '@config';
 import { MyCryptoApiService } from '@services';
-import { ExtendedAsset, LSKeys, Network, TUuid } from '@types';
+import { ExtendedAsset, LSKeys, Network, NetworkId, TUuid } from '@types';
+import { arrayToObj } from '@utils';
 import { filter, findIndex, map, mergeRight, pipe, propEq, toPairs } from '@vendor';
 
 import { initialLegacyState } from './legacy.initialState';
@@ -41,9 +42,8 @@ const slice = createSlice({
       });
     },
     addFromAPI(state, action: PayloadAction<Record<string, ExtendedAsset>>) {
-      const currentAssets = state.reduce(
-        (acc, a: ExtendedAsset) => ({ ...acc, [a.uuid]: a }),
-        {} as Record<string, ExtendedAsset>
+      const currentAssets = arrayToObj('uuid')(
+        state.filter((a) => a.isCustom || a.type === 'base')
       );
       const mergeAssets = pipe(
         (assets: Record<TUuid, ExtendedAsset>) => mergeRight(currentAssets, assets),
@@ -78,19 +78,21 @@ export default slice;
  * Selectors
  */
 
-export const getAssets = createSelector([getAppState], (s) => s[slice.name]);
+export const getAssets = createSelector([getAppState], (s) => s.assets);
+export const getSwapAssets = createSelector([getAssets], (assets) =>
+  assets.filter((a) => a.isCustom || a.isSwapRelevant)
+);
+export const getAssetsByNetwork = (network: NetworkId) =>
+  createSelector(getAssets, (assets) => assets.filter((asset) => asset.networkId === network));
+export const getSwapAssetsByNetwork = (network: NetworkId) =>
+  createSelector(getSwapAssets, (assets) => assets.filter((asset) => asset.networkId === network));
 export const getBaseAssetByNetwork = (network: Network) =>
   createSelector(getAssets, (assets) => assets.find((asset) => asset.uuid === network.baseAsset)!);
 export const getAssetByUUID = (uuid: TUuid) =>
   createSelector([getAssets], (a) => a.find((asset) => asset.uuid === uuid));
 
 export const getCoinGeckoAssetManifest = createSelector(getAssets, (assets) =>
-  assets.reduce((manifest, asset) => {
-    if (asset && asset.mappings && asset.mappings.coinGeckoId) {
-      return { ...manifest, [asset.uuid]: asset.mappings.coinGeckoId };
-    }
-    return manifest;
-  }, {})
+  assets.filter((a) => a.mappings?.coinGeckoId).map((a) => a.uuid)
 );
 
 /**

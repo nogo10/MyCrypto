@@ -1,7 +1,7 @@
 import { Action, Dispatch, Middleware } from '@reduxjs/toolkit';
 
 import {
-  addAccounts,
+  addNewAccounts,
   createAsset,
   importState,
   setDemoMode,
@@ -17,7 +17,7 @@ export const analyticsMiddleware: Middleware<TObject, any, Dispatch<Action>> = (
   next
 ) => (action) => {
   switch (action.type) {
-    case addAccounts.type: {
+    case addNewAccounts.type: {
       // multiple add accounts are always of the same type and network
       for (let i = 0; i < action.payload.length; i++) {
         state.dispatch(

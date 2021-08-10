@@ -3,13 +3,14 @@ import { JsonRpcProvider } from '@ethersproject/providers';
 
 import { FIXTURE_WEB3_ADDRESS } from './fixtures';
 
-export const resetFork = async () => {
+export const resetFork = async (stickyBlockNum = true) => {
   const provider = new JsonRpcProvider('http://127.0.0.1:8546/');
 
   await provider.send('hardhat_reset', [
     {
       forking: {
-        jsonRpcUrl: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_API_KEY}`
+        jsonRpcUrl: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_API_KEY}`,
+        blockNumber: stickyBlockNum ? 12651850 : undefined
       }
     }
   ]);
@@ -42,7 +43,11 @@ export const setupDAI = async () => {
     FIXTURE_WEB3_ADDRESS,
     '100000000000000000000'
   );
-  const sent = await signer.sendTransaction(tx);
+  const sent = await signer.sendTransaction({
+    ...tx,
+    maxFeePerGas: '0xe8990a4600',
+    maxPriorityFeePerGas: '0xe8990a4600'
+  });
 
   await sent.wait();
 

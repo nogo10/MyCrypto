@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { ConfirmTransaction } from '@components';
 import { ITokenMigrationConfig, ITxMultiConfirmProps, ITxType, StoreAccount } from '@types';
 
@@ -28,7 +26,7 @@ export default function ConfirmTokenMigration({
       onComplete={complete}
       resetFlow={complete}
       txConfig={txConfig}
-      txType={currentTx.type || ITxType.STANDARD}
+      txType={currentTx.txType || ITxType.STANDARD}
     />
   );
 }

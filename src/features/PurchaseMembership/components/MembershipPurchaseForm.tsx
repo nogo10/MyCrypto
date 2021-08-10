@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react';
+import { useEffect } from 'react';
 
 import { Field, FieldProps, Form, Formik } from 'formik';
 import isEmpty from 'lodash/isEmpty';
@@ -14,14 +14,13 @@ import {
   DemoGatewayBanner,
   InlineMessage
 } from '@components';
-import { DEFAULT_NETWORK, ETHUUID, XDAI_NETWORK, XDAIUUID } from '@config';
+import { DEFAULT_NETWORK } from '@config';
 import { validateAmountField } from '@features/SendAssets/components/validators/validators';
 import { getAccountsWithAssetBalance } from '@features/SwapAssets/helpers';
-import { fetchGasPriceEstimates } from '@services/ApiService';
+import { fetchUniversalGasPriceEstimate } from '@services/ApiService';
 import { getNonce } from '@services/EthService';
-import { StoreContext, useAssets, useNetworks } from '@services/Store';
-import { isAccountInNetwork, isEthereumAccount } from '@services/Store/Account/helpers';
-import { AppState, getDefaultAccount, getIsDemoMode, useSelector } from '@store';
+import { useAssets, useNetworks } from '@services/Store';
+import { AppState, getDefaultAccount, getIsDemoMode, getStoreAccounts, useSelector } from '@store';
 import { SPACING } from '@theme';
 import translate, { translateRaw } from '@translations';
 import { Asset, IAccount, Network, StoreAccount, TUuid } from '@types';
@@ -69,14 +68,11 @@ const FormFieldSubmitButton = styled(Button)`
 `;
 
 const MembershipForm = ({ isSubmitting, error, isDemoMode, onComplete }: Props) => {
-  const { accounts } = useContext(StoreContext);
+  const accounts = useSelector(getStoreAccounts);
   const { networks } = useNetworks();
-  const relevantNetworks = networks.filter((n) =>
-    [ETHUUID, XDAIUUID].includes(n.baseAsset)
-  ) as Network[];
-  const relevantAccounts = accounts.filter(
-    (account) => isEthereumAccount(account) || isAccountInNetwork(account, XDAI_NETWORK)
-  );
+  const networkIds = [...new Set(Object.values(MEMBERSHIP_CONFIG).map((m) => m.networkId))];
+  const relevantNetworks = networks.filter((n) => networkIds.includes(n.id)) as Network[];
+  const relevantAccounts = accounts.filter((account) => networkIds.includes(account.networkId));
 
   return (
     <MembershipFormUI
@@ -111,7 +107,9 @@ export const MembershipFormUI = ({
     gasPrice: '20',
     address: '',
     gasLimit: '',
-    network: (relevantNetworks.find(({ id }) => id === DEFAULT_NETWORK) as unknown) as Network
+    network: relevantNetworks.find(({ id }) => id === DEFAULT_NETWORK)!,
+    maxFeePerGas: '20',
+    maxPriorityFeePerGas: '1'
   };
 
   const MembershipFormSchema = object().shape({
@@ -249,8 +247,8 @@ export const MembershipFormUI = ({
                 loading={isSubmitting}
                 onClick={() => {
                   if (isValid) {
-                    fetchGasPriceEstimates(values.network).then(({ fast }) => {
-                      onComplete({ ...values, gasPrice: fast.toString() });
+                    fetchUniversalGasPriceEstimate(values.network, values.account).then((gas) => {
+                      onComplete({ ...values, ...gas });
                     });
                   }
                 }}

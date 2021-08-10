@@ -453,5 +453,21 @@ export const NODES_CONFIG: { [key in NetworkId]: StaticNodeConfig[] } = {
       service: 'evrice.com',
       url: 'https://meta.evrice.com'
     }
+  ],
+  Fantom: [
+    {
+      name: NetworkUtils.makeNodeName('Fantom', 'rpcapi.fantom.network'),
+      type: NodeType.RPC,
+      service: 'fantom.network',
+      url: 'https://rpcapi.fantom.network'
+    }
+  ],
+  HECO: [
+    {
+      name: NetworkUtils.makeNodeName('HECO', 'hecochain.com'),
+      type: NodeType.RPC,
+      service: 'Hecochain.com',
+      url: 'https://http-mainnet.hecochain.com/'
+    }
   ]
 };

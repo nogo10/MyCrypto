@@ -10,8 +10,14 @@ export {
 } from './root.reducer';
 export { initialLegacyState } from './legacy.initialState';
 export { useDispatch };
-export { createNotification, updateNotification, selectNotifications } from './notification.slice';
 export {
+  createNotification,
+  updateNotification,
+  selectNotifications,
+  displayNotification
+} from './notification.slice';
+export {
+  addNewAccounts,
   createAccount,
   createAccounts,
   resetAndCreateAccount,
@@ -20,13 +26,17 @@ export {
   updateAccount,
   updateAccounts,
   getAccounts,
-  addAccounts,
   selectCurrentAccounts,
   selectAccountTxs,
   selectTxsByStatus,
   addTxToAccount,
   getStoreAccounts,
-  getDefaultAccount
+  getDefaultAccount,
+  getMergedTxHistory,
+  getUserAssets,
+  startBalancesPolling,
+  stopBalancesPolling,
+  getAccountsAssets
 } from './account.slice';
 export {
   createContact,
@@ -42,7 +52,12 @@ export {
   updateUserActionStateByName,
   selectUserActions
 } from './userAction.slice';
-export { createContract, destroyContract, selectContracts } from './contract.slice';
+export {
+  createContract,
+  destroyContract,
+  selectContracts,
+  getContractName
+} from './contract.slice';
 export {
   createNetworks,
   createNetwork,
@@ -66,7 +81,10 @@ export {
   fetchAssets,
   getAssets,
   getBaseAssetByNetwork,
-  getCoinGeckoAssetManifest
+  getCoinGeckoAssetManifest,
+  getAssetsByNetwork,
+  getSwapAssets,
+  getSwapAssetsByNetwork
 } from './asset.slice';
 export {
   fetchMemberships,
@@ -74,13 +92,13 @@ export {
   setMembership,
   deleteMembership,
   fetchError,
-  isMyCryptoMember,
+  getIsMyCryptoMember,
   getMembershipState
 } from './membership.slice';
 export {
-  resetFavoritesTo,
-  addFavorites,
-  addFavorite,
+  resetCurrentsTo,
+  addCurrents,
+  addCurrent,
   addExcludedAsset,
   removeExcludedAsset,
   setLanguage,
@@ -88,7 +106,7 @@ export {
   setFiat,
   setDemoMode,
   getIsDemoMode,
-  addAccountsToFavorites,
+  addAccountsToCurrents,
   canTrackProductAnalytics,
   setProductAnalyticsAuthorisation,
   getSettings
@@ -103,3 +121,5 @@ export { setRates, getRates, startRatesPolling } from './rates.slice';
 export { trackAsset, getTrackedAssets } from './trackedAssets.slice';
 export { fetchHistory, getTxHistory } from './txHistory.slice';
 export { fetchENS, getENSRecords, getENSFetched } from './ens.slice';
+export { getClaims, getAllClaims } from './claims.slice';
+export { restoreAccount, deleteAccount, getAccountUndoCache } from './accountUndo.slice';

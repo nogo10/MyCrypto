@@ -8,6 +8,8 @@ import { featureFlagSlice } from '@services/FeatureFlag';
 import { deMarshallState, marshallState } from '@services/Store/DataManager/utils';
 import { LocalStorage } from '@types';
 
+import accountUndoSlice from './accountUndo.slice';
+import claimSlice from './claims.slice';
 import ensSlice from './ens.slice';
 import importSlice from './import.slice';
 import { initialLegacyState } from './legacy.initialState';
@@ -27,7 +29,9 @@ const reducers = combineReducers({
   [featureFlagSlice.name]: featureFlagSlice.reducer,
   [signMessageSlice.name]: signMessageSlice.reducer,
   [txHistorySlice.name]: txHistorySlice.reducer,
-  [ensSlice.name]: ensSlice.reducer
+  [ensSlice.name]: ensSlice.reducer,
+  [claimSlice.name]: claimSlice.reducer,
+  [accountUndoSlice.name]: accountUndoSlice.reducer
 });
 
 /**

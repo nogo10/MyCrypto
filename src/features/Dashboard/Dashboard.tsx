@@ -1,12 +1,11 @@
-import React, { useContext } from 'react';
-
 import { Heading } from '@mycrypto/ui';
 import styled from 'styled-components';
 
 import { AccountList, ActionPanel, Desktop, Mobile } from '@components';
 import BannerAd from '@components/BannerAd/BannerAd';
 import { useFeatureFlags } from '@services';
-import { StoreContext, useAccounts } from '@services/Store';
+import { useAccounts } from '@services/Store';
+import { getIsMyCryptoMember, selectCurrentAccounts, useSelector } from '@store';
 import { translateRaw } from '@translations';
 import { useScreenSize } from '@utils';
 
@@ -35,8 +34,8 @@ const DashboardWrapper = styled.div`
 
 export default function Dashboard() {
   const { featureFlags } = useFeatureFlags();
-  const storeContextState = useContext(StoreContext);
-  const { isMyCryptoMember, currentAccounts } = storeContextState;
+  const currentAccounts = useSelector(selectCurrentAccounts);
+  const isMyCryptoMember = useSelector(getIsMyCryptoMember);
   const { accounts } = useAccounts();
   const { isMobile } = useScreenSize();
   const relevantActions = filterDashboardActions(actions, isMobile);

@@ -1,4 +1,4 @@
-import React, { lazy } from 'react';
+import { lazy } from 'react';
 
 import { Redirect } from 'react-router-dom';
 
@@ -122,22 +122,6 @@ export const getStaticAppRoutes = (featureFlags: FeatureFlags): IAppRoute[] => [
     name: ROUTE_PATHS.CREATE_WALLET.name,
     title: ROUTE_PATHS.CREATE_WALLET.title,
     path: ROUTE_PATHS.CREATE_WALLET.path,
-    enabled: isTruthy(featureFlags.CREATE_WALLET),
-    exact: true,
-    component: DownloadAppRedirect
-  },
-  {
-    name: ROUTE_PATHS.CREATE_WALLET_MNEMONIC.name,
-    title: ROUTE_PATHS.CREATE_WALLET_MNEMONIC.title,
-    path: ROUTE_PATHS.CREATE_WALLET_MNEMONIC.path,
-    enabled: isTruthy(featureFlags.CREATE_WALLET),
-    exact: true,
-    component: DownloadAppRedirect
-  },
-  {
-    name: ROUTE_PATHS.CREATE_WALLET_KEYSTORE.name,
-    title: ROUTE_PATHS.CREATE_WALLET_KEYSTORE.title,
-    path: ROUTE_PATHS.CREATE_WALLET_KEYSTORE.path,
     enabled: isTruthy(featureFlags.CREATE_WALLET),
     exact: true,
     component: DownloadAppRedirect

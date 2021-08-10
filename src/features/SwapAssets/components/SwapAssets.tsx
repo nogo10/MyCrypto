@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useState } from 'react';
+import { ChangeEvent, useCallback, useEffect, useState } from 'react';
 
 import debounce from 'lodash/debounce';
 import styled from 'styled-components';
@@ -18,11 +18,12 @@ import {
 } from '@components';
 import { DEX_NETWORKS } from '@config';
 import { useRates } from '@services/Rates';
-import { StoreContext } from '@services/Store';
 import {
   getBaseAssetByNetwork,
   getIsDemoMode,
   getSettings,
+  getStoreAccounts,
+  getUserAssets,
   selectNetwork,
   useSelector
 } from '@store';
@@ -100,8 +101,10 @@ const SwapAssets = (props: Props) => {
   const baseAsset = useSelector(getBaseAssetByNetwork(network));
 
   const [isExpired, setIsExpired] = useState(false);
-  const { accounts, userAssets } = useContext(StoreContext);
+  const accounts = useSelector(getStoreAccounts);
   const { getAssetRate } = useRates();
+
+  const userAssets = useSelector(getUserAssets);
 
   const baseAssetRate = getAssetRate(baseAsset);
   const fromAssetRate = fromAsset && getAssetRate(fromAsset as Asset);
@@ -119,7 +122,7 @@ const SwapAssets = (props: Props) => {
   ]);
 
   // SEND AMOUNT CHANGED
-  const handleFromAmountChangedEvent = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleFromAmountChangedEvent = (e: ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     handleFromAmountChanged(value);
 
@@ -133,7 +136,7 @@ const SwapAssets = (props: Props) => {
   ]);
 
   // RECEIVE AMOUNT CHANGED
-  const handleToAmountChangedEvent = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleToAmountChangedEvent = async (e: ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     handleToAmountChanged(value);
 

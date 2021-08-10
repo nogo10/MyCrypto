@@ -2,9 +2,10 @@ import { createAction, createSelector, createSlice, PayloadAction } from '@redux
 import { all, call, put, select, takeLatest } from 'redux-saga/effects';
 
 import { HistoryService, ITxHistoryApiResponse } from '@services/ApiService/History';
-import { IAccount, StoreAccount } from '@types';
+import { StoreAccount } from '@types';
 
 import {
+  createAccount,
   createAccounts,
   destroyAccount,
   getAccounts,
@@ -30,7 +31,7 @@ const slice = createSlice({
   }
 });
 
-export const fetchHistory = createAction<IAccount[] | undefined>(`${slice.name}/fetchHistory`);
+export const fetchHistory = createAction(`${slice.name}/fetchHistory`);
 
 /**
  * Selectors
@@ -46,7 +47,12 @@ export const getTxHistory = createSelector([getSlice], (s) => s.history);
 export function* txHistorySaga() {
   yield all([
     takeLatest(
-      [createAccounts.type, resetAndCreateManyAccounts.type, destroyAccount.type],
+      [
+        createAccount.type,
+        createAccounts.type,
+        resetAndCreateManyAccounts.type,
+        destroyAccount.type
+      ],
       fetchHistoryWorker
     ),
     takeLatest(fetchHistory.type, fetchHistoryWorker)

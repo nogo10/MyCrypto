@@ -1,28 +1,54 @@
 import { BigNumber } from '@ethersproject/bignumber';
+import { parseEther } from '@ethersproject/units';
 import { call } from 'redux-saga-test-plan/matchers';
 import { APP_STATE, expectSaga, mockAppState } from 'test-utils';
 
-import { ETHUUID, REPV2UUID } from '@config';
+import { DEFAULT_NETWORK, ETHUUID, REPV1UUID, REPV2UUID } from '@config';
+import { ITxHistoryType } from '@features/Dashboard/types';
+import { NotificationTemplates } from '@features/NotificationsPanel';
 import {
   fAccount,
   fAccounts,
   fAssets,
   fContacts,
+  fContracts,
+  fNetwork,
   fNetworks,
   fSettings,
   fTransaction,
+  fTransactionEIP1559,
+  fTxHistoryAPI,
   fTxReceipt
 } from '@fixtures';
 import { makeFinishedTxReceipt } from '@helpers';
 import { getTimestampFromBlockNum, getTxStatus, ProviderHandler } from '@services/EthService';
-import { IAccount, ITxReceipt, ITxStatus, ITxType, NetworkId, TUuid } from '@types';
+import { translateRaw } from '@translations';
+import {
+  IAccount,
+  ILegacyTxObject,
+  ISettings,
+  ITxReceipt,
+  ITxStatus,
+  ITxType,
+  ITxType2Object,
+  NetworkId,
+  TUuid,
+  WalletId
+} from '@types';
+import { fromWei, Wei } from '@utils';
 
+import { getAccountsAssetsBalances } from '../BalanceService';
 import { toStoreAccount } from '../utils';
 import {
+  addNewAccounts,
+  addNewAccountsWorker,
   addTxToAccount,
   addTxToAccountWorker,
+  fetchBalances,
   getAccounts,
+  getMergedTxHistory,
   getStoreAccounts,
+  getUserAssets,
   initialState,
   pendingTxPolling,
   resetAndCreateAccount,
@@ -30,14 +56,21 @@ import {
   selectAccountTxs,
   selectCurrentAccounts,
   default as slice,
-  updateAccount
+  updateAccount,
+  updateAccounts
 } from './account.slice';
+import { createOrUpdateContacts } from './contact.slice';
 import { sanitizeAccount } from './helpers';
 import { fetchMemberships } from './membership.slice';
+import { displayNotification } from './notification.slice';
 import { scanTokens } from './tokenScanning.slice';
 
 const reducer = slice.reducer;
 const { create, createMany, destroy, update, updateMany, reset, updateAssets } = slice.actions;
+
+jest.mock('uuid/v4', () => jest.fn().mockImplementation(() => 'foo'));
+
+Date.now = jest.fn().mockImplementation(() => 1623248693738);
 
 describe('AccountSlice', () => {
   it('create(): adds an entity by uuid', () => {
@@ -153,9 +186,45 @@ describe('AccountSlice', () => {
           {
             ...fTransaction,
             gasLimit: BigNumber.from(fTransaction.gasLimit),
-            gasPrice: BigNumber.from(fTransaction.gasPrice),
+            gasPrice: BigNumber.from((fTransaction as ILegacyTxObject).gasPrice),
             gasUsed: BigNumber.from(fTransaction.gasLimit),
+            nonce: BigNumber.from(fTransaction.nonce),
             value: BigNumber.from(fTransaction.value)
+          }
+        ]
+      }
+    ]);
+  });
+
+  it('getAccounts(): supports EIP 1559 transaactions', () => {
+    const state = mockAppState({
+      accounts: [
+        {
+          ...fAccount,
+          transactions: [
+            ({
+              ...fTransactionEIP1559,
+              gasUsed: fTransactionEIP1559.gasLimit
+            } as unknown) as ITxReceipt
+          ]
+        }
+      ]
+    });
+    const actual = getAccounts(state);
+    expect(actual).toEqual([
+      {
+        ...fAccount,
+        transactions: [
+          {
+            ...fTransactionEIP1559,
+            gasLimit: BigNumber.from(fTransactionEIP1559.gasLimit),
+            maxFeePerGas: BigNumber.from((fTransactionEIP1559 as ITxType2Object).maxFeePerGas),
+            maxPriorityFeePerGas: BigNumber.from(
+              (fTransactionEIP1559 as ITxType2Object).maxPriorityFeePerGas
+            ),
+            gasUsed: BigNumber.from(fTransactionEIP1559.gasLimit),
+            nonce: BigNumber.from(fTransactionEIP1559.nonce),
+            value: BigNumber.from(fTransactionEIP1559.value)
           }
         ]
       }
@@ -176,10 +245,29 @@ describe('AccountSlice', () => {
     expect(actual).toEqual([{ ...fAccounts[0], label: fContacts[1].label }]);
   });
 
+  it('getUserAssets(): gets user accounts assets and filter excluded assets', () => {
+    const walletConnectAccount = fAccounts.filter((a) => a.wallet === WalletId.WALLETCONNECT)[0];
+    const viewOnlyAccount = fAccounts.filter((a) => a.wallet === WalletId.VIEW_ONLY)[0];
+
+    const state = mockAppState({
+      accounts: [sanitizeAccount(walletConnectAccount), sanitizeAccount(viewOnlyAccount)],
+      assets: fAssets,
+      networks: fNetworks,
+      addressBook: fContacts,
+      settings: { excludedAssets: [REPV1UUID] } as ISettings
+    });
+
+    const actual = getUserAssets(state);
+    expect(actual).toEqual(walletConnectAccount.assets.filter((a) => a.uuid !== REPV1UUID));
+  });
+
   it('selectCurrentAccounts(): returns only favorite accounts', () => {
     const state = mockAppState({
       accounts: fAccounts,
-      settings: fSettings
+      settings: fSettings,
+      networks: fNetworks,
+      assets: fAssets,
+      addressBook: []
     });
     const actual = selectCurrentAccounts(state);
     expect(actual).toEqual([fAccounts[0]]);
@@ -201,15 +289,375 @@ describe('AccountSlice', () => {
       {
         chainId: 3,
         data: '0x',
-        gasLimit: { _hex: '0x5208', _isBigNumber: true },
-        gasPrice: { _hex: '0xee6b2800', _isBigNumber: true },
-        gasUsed: { _hex: '0x5208', _isBigNumber: true },
-        nonce: '0x9',
+        gasLimit: BigNumber.from('0x5208'),
+        gasPrice: BigNumber.from('0xee6b2800'),
+        gasUsed: BigNumber.from('0x5208'),
+        nonce: BigNumber.from('0x9'),
         status: undefined,
         to: '0x909f74Ffdc223586d0d30E78016E707B6F5a45E2',
         value: { _hex: '0x038d7ea4c68000', _isBigNumber: true }
       }
     ]);
+  });
+
+  describe('getMergedTxHistory', () => {
+    const defaultAppState = {
+      accounts: fAccounts,
+      networks: APP_STATE.networks,
+      addressBook: fContacts,
+      contracts: fContracts,
+      assets: fAssets
+    };
+    it('uses tx history from store', () => {
+      const state = {
+        ...mockAppState(defaultAppState),
+        txHistory: { history: [fTxHistoryAPI], error: false }
+      };
+      const actual = getMergedTxHistory(state);
+
+      expect(actual).toEqual([
+        {
+          ...fTxHistoryAPI,
+          amount: fromWei(Wei(BigNumber.from(fTxHistoryAPI.value).toString()), 'ether'),
+          asset: fAssets[0],
+          baseAsset: fAssets[0],
+          fromAddressBookEntry: undefined,
+          toAddressBookEntry: undefined,
+          receiverAddress: fTxHistoryAPI.recipientAddress,
+          nonce: BigNumber.from(fTxHistoryAPI.nonce),
+          networkId: DEFAULT_NETWORK,
+          blockNumber: BigNumber.from(fTxHistoryAPI.blockNumber!).toNumber(),
+          gasLimit: BigNumber.from(fTxHistoryAPI.gasLimit),
+          gasPrice: BigNumber.from(fTxHistoryAPI.gasPrice),
+          gasUsed: BigNumber.from(fTxHistoryAPI.gasUsed || 0),
+          value: parseEther(fromWei(Wei(BigNumber.from(fTxHistoryAPI.value).toString()), 'ether'))
+        }
+      ]);
+    });
+
+    it('uses transactions from Account', () => {
+      const state = {
+        ...mockAppState({
+          ...defaultAppState,
+          accounts: [{ ...fAccount, transactions: [fTxReceipt] }]
+        }),
+        txHistory: { history: [], error: false }
+      };
+      const actual = getMergedTxHistory(state);
+
+      expect(actual).toEqual([
+        {
+          ...fTxReceipt,
+          gasLimit: BigNumber.from(fTxReceipt.gasLimit),
+          gasPrice: BigNumber.from(fTxReceipt.gasPrice),
+          nonce: BigNumber.from(fTxReceipt.nonce),
+          value: BigNumber.from(fTxReceipt.value),
+          networkId: fNetwork.id,
+          timestamp: 0,
+          toAddressBookEntry: undefined,
+          txType: ITxHistoryType.OUTBOUND,
+          fromAddressBookEntry: fContacts[0]
+        }
+      ]);
+    });
+
+    it('merges transactions and prioritizes account txs', () => {
+      const state = {
+        ...mockAppState({
+          ...defaultAppState,
+          accounts: [
+            {
+              ...fAccount,
+              transactions: [
+                {
+                  ...fTxReceipt,
+                  hash: '0xbc9a016464ac9d52d29bbe9feec9e5cb7eb3263567a1733650fe8588d426bf40'
+                }
+              ]
+            }
+          ]
+        }),
+        txHistory: { history: [fTxHistoryAPI], error: false }
+      };
+      const actual = getMergedTxHistory(state);
+      expect(actual).toHaveLength(1);
+      expect(actual).toEqual([
+        {
+          ...fTxReceipt,
+          gasLimit: BigNumber.from(fTxReceipt.gasLimit),
+          gasPrice: BigNumber.from(fTxReceipt.gasPrice),
+          nonce: BigNumber.from(fTxReceipt.nonce),
+          value: BigNumber.from(fTxReceipt.value),
+          hash: '0xbc9a016464ac9d52d29bbe9feec9e5cb7eb3263567a1733650fe8588d426bf40',
+          networkId: fNetwork.id,
+          timestamp: 0,
+          toAddressBookEntry: undefined,
+          txType: ITxHistoryType.OUTBOUND,
+          fromAddressBookEntry: fContacts[0]
+        }
+      ]);
+    });
+
+    it('merges transactions', () => {
+      const state = {
+        ...mockAppState({
+          ...defaultAppState,
+          accounts: [
+            {
+              ...fAccount,
+              transactions: [fTxReceipt]
+            }
+          ]
+        }),
+        txHistory: { history: [fTxHistoryAPI], error: false }
+      };
+      const actual = getMergedTxHistory(state);
+      expect(actual).toHaveLength(2);
+    });
+  });
+
+  describe('addNewAccountsWorker', () => {
+    const appState = mockAppState({
+      accounts: [],
+      networks: APP_STATE.networks,
+      assets: fAssets,
+      addressBook: [],
+      contracts: [],
+      settings: fSettings
+    });
+
+    const { label, ...newAccount } = sanitizeAccount(fAccounts[0]);
+    const newAccounts = [
+      {
+        ...newAccount,
+        assets: fAccounts[0].assets
+          .slice(0, 1)
+          .map((a) => ({ uuid: a.uuid, balance: '0', mtime: 1623248693738 }))
+      }
+    ];
+
+    it('adds new accounts', () => {
+      return expectSaga(
+        addNewAccountsWorker,
+        addNewAccounts({
+          networkId: 'Ethereum',
+          accountType: WalletId.WALLETCONNECT,
+          newAccounts
+        })
+      )
+        .withState(appState)
+        .put(
+          createOrUpdateContacts([
+            {
+              label: 'WalletConnect Account 1',
+              address: fAccounts[0].address,
+              notes: '',
+              network: 'Ethereum',
+              uuid: 'foo' as TUuid
+            }
+          ])
+        )
+        .put(createMany(newAccounts))
+        .put(fetchMemberships(newAccounts))
+        .put(scanTokens({ accounts: newAccounts }))
+        .put(
+          displayNotification({
+            templateName: NotificationTemplates.walletAdded,
+            templateData: { address: newAccounts[0].address }
+          })
+        )
+        .silentRun();
+    });
+
+    it('exits demo mode if needed', () => {
+      return expectSaga(
+        addNewAccountsWorker,
+        addNewAccounts({
+          networkId: 'Ethereum',
+          accountType: WalletId.WALLETCONNECT,
+          newAccounts
+        })
+      )
+        .withState(
+          mockAppState({
+            accounts: [],
+            networks: APP_STATE.networks,
+            assets: fAssets,
+            addressBook: [],
+            contracts: [],
+            settings: { ...fSettings, isDemoMode: true }
+          })
+        )
+        .put(
+          createOrUpdateContacts([
+            {
+              label: 'WalletConnect Account 1',
+              address: fAccounts[0].address,
+              notes: '',
+              network: 'Ethereum',
+              uuid: 'foo' as TUuid
+            }
+          ])
+        )
+        .put(resetAndCreateManyAccounts(newAccounts))
+        .put(fetchMemberships(newAccounts))
+        .put(scanTokens({ accounts: newAccounts }))
+        .put(
+          displayNotification({
+            templateName: NotificationTemplates.walletAdded,
+            templateData: { address: newAccounts[0].address }
+          })
+        )
+        .silentRun();
+    });
+
+    it('doesnt run if no accounts passed', () => {
+      return expectSaga(
+        addNewAccountsWorker,
+        addNewAccounts({
+          networkId: 'Ethereum',
+          accountType: WalletId.WALLETCONNECT,
+          newAccounts: []
+        })
+      )
+        .withState(appState)
+        .not.put(createMany(newAccounts))
+        .silentRun();
+    });
+
+    it('displays notification if accounts failed to add', () => {
+      return expectSaga(
+        addNewAccountsWorker,
+        addNewAccounts({
+          networkId: 'Ethereum',
+          accountType: WalletId.WALLETCONNECT,
+          newAccounts
+        })
+      )
+        .withState(
+          mockAppState({
+            accounts: newAccounts,
+            networks: APP_STATE.networks,
+            assets: fAssets,
+            addressBook: [],
+            contracts: [],
+            settings: fSettings
+          })
+        )
+        .put(displayNotification({ templateName: NotificationTemplates.walletsNotAdded }))
+        .silentRun();
+    });
+
+    it('shows different notification for multiple accounts', () => {
+      const accounts = [newAccounts[0], newAccounts[0]];
+      return expectSaga(
+        addNewAccountsWorker,
+        addNewAccounts({
+          networkId: 'Ethereum',
+          accountType: WalletId.WALLETCONNECT,
+          newAccounts: accounts
+        })
+      )
+        .withState(
+          mockAppState({
+            accounts: [],
+            networks: APP_STATE.networks,
+            assets: fAssets,
+            addressBook: [],
+            contracts: [],
+            settings: fSettings
+          })
+        )
+        .put(
+          displayNotification({
+            templateName: NotificationTemplates.walletsAdded,
+            templateData: { accounts }
+          })
+        )
+        .silentRun();
+    });
+
+    it('updates unknown labels', () => {
+      return expectSaga(
+        addNewAccountsWorker,
+        addNewAccounts({
+          networkId: 'Ethereum',
+          accountType: WalletId.WALLETCONNECT,
+          newAccounts
+        })
+      )
+        .withState(
+          mockAppState({
+            accounts: [],
+            networks: APP_STATE.networks,
+            assets: fAssets,
+            addressBook: [
+              {
+                uuid: 'foo' as TUuid,
+                address: fAccounts[0].address,
+                label: translateRaw('NO_LABEL'),
+                notes: '',
+                network: 'Ethereum'
+              }
+            ],
+            contracts: [],
+            settings: fSettings
+          })
+        )
+        .put(
+          createOrUpdateContacts([
+            {
+              label: 'WalletConnect Account 1',
+              address: fAccounts[0].address,
+              notes: '',
+              network: 'Ethereum',
+              uuid: 'foo' as TUuid
+            }
+          ])
+        )
+        .silentRun();
+    });
+
+    it('doesnt update labels if no updates are needed', () => {
+      return expectSaga(
+        addNewAccountsWorker,
+        addNewAccounts({
+          networkId: 'Ethereum',
+          accountType: WalletId.WALLETCONNECT,
+          newAccounts
+        })
+      )
+        .withState(
+          mockAppState({
+            accounts: [],
+            networks: APP_STATE.networks,
+            assets: fAssets,
+            addressBook: [
+              {
+                uuid: 'foo' as TUuid,
+                address: fAccounts[0].address,
+                label: 'Foobar',
+                notes: '',
+                network: 'Ethereum'
+              }
+            ],
+            contracts: [],
+            settings: fSettings
+          })
+        )
+        .not.put(
+          createOrUpdateContacts([
+            {
+              label: 'WalletConnect Account 1',
+              address: fAccounts[0].address,
+              notes: '',
+              network: 'Ethereum',
+              uuid: 'foo' as TUuid
+            }
+          ])
+        )
+        .silentRun();
+    });
   });
 
   describe('addTxToAccountWorker', () => {
@@ -275,6 +723,7 @@ describe('AccountSlice', () => {
       gasPrice: BigNumber.from(fTxReceipt.gasPrice),
       gasUsed: BigNumber.from(fTxReceipt.gasLimit),
       value: BigNumber.from(fTxReceipt.value),
+      nonce: BigNumber.from(fTxReceipt.nonce),
       asset: fAssets[0],
       baseAsset: fAssets[0]
     };
@@ -283,14 +732,16 @@ describe('AccountSlice', () => {
       const account = { ...fAccounts[0], transactions: [pendingTx] };
       const contact = { ...fContacts[0], network: 'Ethereum' as NetworkId };
       return expectSaga(pendingTxPolling)
-        .withState(
-          mockAppState({
+        .withState({
+          ...mockAppState({
             accounts: [account],
             assets: fAssets,
             networks: APP_STATE.networks,
-            addressBook: []
-          })
-        )
+            addressBook: [],
+            contracts: fContracts
+          }),
+          txHistory: { history: [fTxHistoryAPI] }
+        })
         .provide([
           [call.fn(getTxStatus), ITxStatus.SUCCESS],
           [call.fn(getTimestampFromBlockNum), timestamp]
@@ -319,14 +770,16 @@ describe('AccountSlice', () => {
       const account = { ...fAccounts[0], transactions: [pendingTx, overwrittenTx] };
       const contact = { ...fContacts[0], network: 'Ethereum' as NetworkId };
       return expectSaga(pendingTxPolling)
-        .withState(
-          mockAppState({
+        .withState({
+          ...mockAppState({
             accounts: [account],
             assets: fAssets,
             networks: APP_STATE.networks,
-            addressBook: [contact]
-          })
-        )
+            addressBook: [contact],
+            contracts: fContracts
+          }),
+          txHistory: { history: [fTxHistoryAPI] }
+        })
         .put(
           updateAccount({
             ...toStoreAccount(
@@ -341,18 +794,54 @@ describe('AccountSlice', () => {
         .silentRun();
     });
 
+    it('handles pending overwritten transaction via tx history api', () => {
+      const overwrittenTx = {
+        ...fTxHistoryAPI,
+        nonce: pendingTx.nonce,
+        from: pendingTx.from,
+        hash: 'bla'
+      };
+      const account = { ...fAccounts[0], transactions: [pendingTx] };
+      const contact = { ...fContacts[0], network: 'Ethereum' as NetworkId };
+      return expectSaga(pendingTxPolling)
+        .withState({
+          ...mockAppState({
+            accounts: [account],
+            assets: fAssets,
+            networks: APP_STATE.networks,
+            addressBook: [contact],
+            contracts: fContracts
+          }),
+          txHistory: { history: [overwrittenTx] }
+        })
+        .put(
+          updateAccount({
+            ...toStoreAccount(
+              account,
+              fAssets,
+              APP_STATE.networks.find((n) => n.id === 'Ethereum')!,
+              contact
+            ),
+            transactions: []
+          })
+        )
+        .silentRun();
+    });
+
     it('skips if pending tx not mined', () => {
       ProviderHandler.prototype.getTransactionByHash = jest.fn().mockResolvedValue(undefined);
       const account = { ...fAccounts[0], transactions: [pendingTx] };
       return expectSaga(pendingTxPolling)
-        .withState(
-          mockAppState({
+        .withState({
+          ...mockAppState({
             accounts: [account],
             assets: fAssets,
             networks: APP_STATE.networks,
-            addressBook: [{ ...fContacts[0], network: 'Ethereum' }]
-          })
-        )
+            addressBook: [{ ...fContacts[0], network: 'Ethereum' }],
+            contracts: fContracts
+          }),
+          txHistory: { history: [fTxHistoryAPI] }
+        })
         .not.put(
           addTxToAccount({
             account: sanitizeAccount(account),
@@ -368,14 +857,16 @@ describe('AccountSlice', () => {
         .mockResolvedValue({ blockNumber: blockNum });
       const account = { ...fAccounts[0], transactions: [pendingTx] };
       return expectSaga(pendingTxPolling)
-        .withState(
-          mockAppState({
+        .withState({
+          ...mockAppState({
             accounts: [account],
             assets: fAssets,
             networks: APP_STATE.networks,
-            addressBook: [{ ...fContacts[0], network: 'Ethereum' }]
-          })
-        )
+            addressBook: [{ ...fContacts[0], network: 'Ethereum' }],
+            contracts: fContracts
+          }),
+          txHistory: { history: [fTxHistoryAPI] }
+        })
         .provide([
           [call.fn(getTxStatus), undefined],
           [call.fn(getTimestampFromBlockNum), undefined]
@@ -388,5 +879,24 @@ describe('AccountSlice', () => {
         )
         .silentRun();
     });
+  });
+
+  it('fetchBalances(): fetch assets balances from accounts', () => {
+    const result = [fAccounts[1]];
+    const initialState = mockAppState({
+      accounts: [fAccounts[1]],
+      assets: fAssets,
+      networks: fNetworks,
+      addressBook: [],
+      settings: { dashboardAccounts: [fAccounts[1].uuid] } as ISettings
+    });
+
+    return expectSaga(fetchBalances)
+      .withState(initialState)
+      .provide([[call.fn(getAccountsAssetsBalances), result]])
+      .select(selectCurrentAccounts)
+      .call(getAccountsAssetsBalances, [fAccounts[1]])
+      .put(updateAccounts(result))
+      .silentRun();
   });
 });

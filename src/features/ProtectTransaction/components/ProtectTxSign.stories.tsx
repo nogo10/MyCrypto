@@ -1,10 +1,8 @@
-import React from 'react';
-
 import { Panel } from '@mycrypto/ui';
 import { storiesOf } from '@storybook/react';
 
 import { NETWORKS_CONFIG, NODES_CONFIG } from '@database/data';
-import { fAccount } from '@fixtures';
+import { fAccounts } from '@fixtures';
 import { Network, NetworkId } from '@types';
 import { noOp } from '@utils';
 
@@ -34,7 +32,7 @@ const ProtectTxStep2 = () => (
         handleProtectTxConfirmAndSend={noOp}
         txConfig={sampleTxConfig as any}
         network={network}
-        account={fAccount}
+        account={fAccounts[0]}
       />
     </Panel>
   </div>

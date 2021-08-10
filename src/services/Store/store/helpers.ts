@@ -128,15 +128,20 @@ export const sanitizeAccount = (a: IAccount) => ({
     balance: a.balance
   })),
   wallet: a.wallet,
-  transactions: a.transactions?.map((t) => ({
-    ...t,
-    value: t.value,
-    gasLimit: t.gasLimit,
-    gasPrice: t.gasPrice,
-    gasUsed: t.gasUsed && t.gasUsed
-  })),
-  dPath: a.dPath,
+  transactions: a.transactions,
+  path: a.path,
+  index: a.index,
   mtime: a.mtime,
   favorite: a.favorite,
   isPrivate: a.isPrivate
 });
+
+export const generateCustomDPath = (dPath: string) => {
+  const dPathArray = dPath.split('/');
+  const index = parseInt(dPathArray.pop()!, 10);
+  const path = {
+    name: 'Custom DPath',
+    path: `${dPathArray.join('/')}/<account>`
+  };
+  return [path, index];
+};

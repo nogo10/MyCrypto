@@ -1,4 +1,4 @@
-import React from 'react';
+import { FC } from 'react';
 
 import { renderHook } from '@testing-library/react-hooks';
 import {
@@ -31,7 +31,7 @@ jest.mock('@mycrypto/eth-scan', () => {
 });
 
 const renderUseAccounts = ({ accounts = [] as IAccount[] } = {}) => {
-  const wrapper: React.FC = ({ children }) => (
+  const wrapper: FC = ({ children }) => (
     <ProvidersWrapper initialState={mockAppState({ accounts, networks: fNetworks })}>
       {children}
     </ProvidersWrapper>
@@ -43,13 +43,6 @@ describe('useAccounts', () => {
   it('uses get addressbook from store', () => {
     const { result } = renderUseAccounts({ accounts: fAccounts });
     expect(result.current.accounts).toEqual(fAccounts);
-  });
-
-  it('createMultipleAccountsWithIDs() calls updateAll with multiple accounts', () => {
-    const mockDispatch = mockUseDispatch();
-    const { result } = renderUseAccounts({ accounts: [] });
-    result.current.createMultipleAccountsWithIDs(fAccounts);
-    expect(mockDispatch).toHaveBeenCalledWith(actionWithPayload(fAccounts));
   });
 
   it('deleteAccount() calls destroy', () => {

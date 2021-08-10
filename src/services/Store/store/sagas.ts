@@ -5,10 +5,13 @@ import { signMessageSaga } from '@features/SignAndVerifyMessage';
 import { analyticsSaga } from '@services/Analytics';
 
 import { accountsSaga } from './account.slice';
+import { accountUndoSaga } from './accountUndo.slice';
 import { assetSaga } from './asset.slice';
+import { claimsSaga } from './claims.slice';
 import { ensSaga } from './ens.slice';
 import { fetchMembershipsSaga } from './membership.slice';
 import { networkSaga } from './network.slice';
+import { notificationSaga } from './notification.slice';
 import { persistenceSaga } from './persistence.slice';
 import { ratesSaga } from './rates.slice';
 import { importSaga } from './root.reducer';
@@ -31,6 +34,9 @@ export default function* rootSaga() {
     ratesSaga(),
     signMessageSaga(),
     txHistorySaga(),
-    ensSaga()
+    ensSaga(),
+    notificationSaga(),
+    claimsSaga(),
+    accountUndoSaga()
   ]);
 }

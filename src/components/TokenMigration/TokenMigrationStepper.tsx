@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer } from 'react';
+import { useEffect, useReducer } from 'react';
 
 import { createSignConfirmAndReceiptSteps } from '@components';
 import { default as GeneralStepper, IStepperPath } from '@components/GeneralStepper';
@@ -44,7 +44,7 @@ const TokenMigrationStepper = ({ tokenMigrationConfig }: Props) => {
           () => {
             const txs = tokenMigrationConfig.txConstructionConfigs.map((txConstructionConfig) => ({
               ...txConstructionConfig.constructTxFn(formData),
-              type: txConstructionConfig.txType,
+              txType: txConstructionConfig.txType,
               metadata: { receivingAsset: tokenMigrationConfig.toAssetUuid }
             }));
             return Promise.resolve(txs);

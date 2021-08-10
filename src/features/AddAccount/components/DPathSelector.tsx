@@ -1,12 +1,9 @@
-import React from 'react';
-
+import { DerivationPath as DPath } from '@mycrypto/wallets';
 import { OptionProps } from 'react-select';
 import styled from 'styled-components';
 
 import { Box, Selector, Text } from '@components';
-import { parseHardenedPath } from '@services';
 import { monospace, SPACING } from '@theme';
-import { DPath } from '@types';
 
 const DropdownDPath = styled.span`
   padding-left: ${SPACING.XS};
@@ -16,7 +13,7 @@ const DropdownDPath = styled.span`
 `;
 
 type TDPathOptionProps = { paddingLeft: string } & (
-  | OptionProps<DPath>
+  | OptionProps<DPath, false>
   | { data: DPath; selectOption?(): void }
 );
 const DPathOption = ({ data, paddingLeft, selectOption }: TDPathOptionProps) => (
@@ -25,7 +22,7 @@ const DPathOption = ({ data, paddingLeft, selectOption }: TDPathOptionProps) => 
     onClick={selectOption && (() => selectOption(data))}
   >
     <Text mb={SPACING.NONE}>
-      {data.label} {data.value && <DropdownDPath>{parseHardenedPath(data, 0)}</DropdownDPath>}
+      {data.name} {data.path && <DropdownDPath>{data.path}</DropdownDPath>}
     </Text>
   </Box>
 );

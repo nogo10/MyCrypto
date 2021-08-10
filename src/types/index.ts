@@ -41,56 +41,17 @@ export { Contract, ExtendedContract } from './contract';
 export { Network, NetworkLegacy, AssetLegacy, ContractLegacy, NetworkNodes } from './network';
 export { NetworkId } from './networkId';
 export { NodeType } from './node';
-export { DPathFormat, DPath } from './dPath';
+export { DPathFormat } from './dPath';
 export { ISettings } from './settings';
 export { LocalStorage, LSKeys, DataStore } from './store';
 export { Notification, ExtendedNotification } from './notification';
-export { IERC20 } from './erc20';
+export { IERC20, TokenInformation } from './erc20';
 export { IREPV2 } from './repV2';
 export { IAntMigrator } from './antMigrator';
 export { IUNLOCKLOCK } from './unlockProtocolToken';
 export { ABIFunc, ABIFuncParamless } from './abiFunc';
-export {
-  ITransaction,
-  IHexStrTransaction,
-  IHexStrWeb3Transaction,
-  ITxReceipt,
-  ITxHash,
-  ITxSigned,
-  IFailedTxReceipt,
-  ISuccessfulTxReceipt,
-  IPendingTxReceipt,
-  IUnknownTxReceipt,
-  ITxMetadata
-} from './transaction';
-export {
-  ISignedTx,
-  ITxObject,
-  ITxToAddress,
-  ITxValue,
-  ITxGasLimit,
-  ITxGasPrice,
-  ITxData,
-  ITxNonce,
-  ITxFromAddress,
-  ITxConfig,
-  ITxStatus,
-  ITxHistoryStatus,
-  ITxType,
-  IFormikFields,
-  ISignComponentProps,
-  IStepComponentProps,
-  SigningComponents,
-  IReceiverAddress,
-  ITxReceiptStepProps,
-  ISimpleTxForm,
-  IDefaultStepComponentProps,
-  ISimpleTxFormFull,
-  TStepAction,
-  TxQueryTypes,
-  ITxMultiConfirmProps,
-  IFlowConfig
-} from './transactionFlow';
+export * from './transaction';
+export * from './transactionFlow';
 export { JsonRPCResponse } from './jsonRPCResponse';
 export { IAppRoute, IRoutePath, IRoutePaths } from './routes';
 export { Tab } from './tab';
@@ -136,3 +97,6 @@ export { IGolemMigration } from './golemV2Migration';
 export { IRouteLink, IExternalLink, TTrayItem, INavTray, INavigationProps } from './navigation';
 export { Bigish } from '@utils/bigify';
 export { BusyBottomConfig } from './busyBottom';
+export * from './claims';
+export * from './omit';
+export * from './query';

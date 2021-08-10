@@ -1,4 +1,6 @@
+import { FeeData } from '@ethersproject/abstract-provider';
 import { BigNumber } from '@ethersproject/bignumber';
+import { Contract } from '@ethersproject/contracts';
 import {
   BaseProvider,
   Block,
@@ -8,10 +10,12 @@ import {
 } from '@ethersproject/providers';
 import { formatEther } from '@ethersproject/units';
 import any from '@ungap/promise-any';
+import Resolution from '@unstoppabledomains/resolution';
 
 import { DEFAULT_ASSET_DECIMAL } from '@config';
 import { ERC20 } from '@services/EthService';
-import { Asset, IHexStrTransaction, ITxSigned, Network } from '@types';
+import { erc20Abi } from '@services/EthService/contracts/erc20';
+import { Asset, ITxObject, ITxSigned, Network, TAddress, TokenInformation } from '@types';
 import { baseToConvertedUnit } from '@utils';
 import { FallbackProvider } from '@vendor';
 
@@ -52,9 +56,11 @@ export class ProviderHandler {
   }
 
   /* Tested*/
-  public estimateGas(transaction: Partial<IHexStrTransaction>): Promise<string> {
+  public async estimateGas(transaction: Partial<ITxObject>): Promise<string> {
+    const gasLimit = (await this.getMaxGasLimit(transaction)) ?? transaction.gasLimit;
+
     return this.injectClient((client) =>
-      client.estimateGas(transaction).then((data) => data.toString())
+      client.estimateGas({ ...transaction, gasLimit }).then((data) => data.toString())
     );
   }
 
@@ -122,8 +128,12 @@ export class ProviderHandler {
   }
 
   /* Tested */
-  public getCurrentBlock(): Promise<string> {
+  public getLatestBlockNumber(): Promise<string> {
     return this.injectClient((client) => client.getBlockNumber().then((data) => data.toString()));
+  }
+
+  public getLatestBlock(): Promise<Block> {
+    return this.getBlockByHash('latest');
   }
 
   public sendRawTx(signedTx: string | ITxSigned): Promise<TransactionResponse> {
@@ -150,6 +160,60 @@ export class ProviderHandler {
     );
   }
 
+  /**
+   * Get token information (symbol, decimals) based on a token address. Returns `undefined` if the information cannot be
+   * fetched (e.g. because the provided address is not a contract or the token does not have a symbol or decimals).
+   */
+  public async getTokenInformation(tokenAddress: TAddress): Promise<TokenInformation | undefined> {
+    return this.injectClient(async (client) => {
+      try {
+        const contract = new Contract(tokenAddress, erc20Abi, client);
+        const [symbol, decimals] = await Promise.all([contract.symbol(), contract.decimals()]);
+
+        return { symbol, decimals };
+      } catch (e) {
+        return undefined;
+      }
+    });
+  }
+
+  public resolveENSName(name: string): Promise<string | null> {
+    return this.injectClient((client) => {
+      // Use Unstoppable if supported, otherwise is probably an ENS name
+      const unstoppable = Resolution.fromEthersProvider(client);
+      if (unstoppable.isSupportedDomain(name)) {
+        return unstoppable.addr(name, this.network.baseUnit);
+      }
+
+      return client.resolveName(name);
+    });
+  }
+
+  public getFeeData(): Promise<FeeData> {
+    return this.injectClient((client) => client.getFeeData());
+  }
+
+  // @todo Update this when Ethers supports eth_feeHistory
+  public getFeeHistory(
+    blockCount: number,
+    newestBlock: string,
+    rewardPercentiles?: any[]
+  ): Promise<{
+    baseFeePerGas: string[];
+    gasUsedRatio: number[];
+    reward?: string[][];
+    oldestBlock: number;
+  }> {
+    return this.injectClient((client) =>
+      // @ts-expect-error Temp until Ethers supports eth_feeHistory
+      (client as FallbackProvider).providerConfigs[0].provider.send('eth_feeHistory', [
+        blockCount,
+        newestBlock,
+        rewardPercentiles ?? []
+      ])
+    );
+  }
+
   protected injectClient(clientInjectCb: (client: FallbackProvider | BaseProvider) => any) {
     if (clientInjectCb) {
       if (this.isFallbackProvider) {
@@ -157,5 +221,33 @@ export class ProviderHandler {
       }
       return clientInjectCb(ProviderHandler.fetchSingleProvider(this.network));
     }
+  }
+
+  // @todo Remove this when Geth is updated
+  private getMaxGasLimit(transaction: Partial<ITxObject>): Promise<BigNumber | undefined> {
+    return this.injectClient(async (client) => {
+      if (!transaction.from || !transaction.value || transaction.type !== 2) {
+        return;
+      }
+
+      try {
+        const [block, balance] = await Promise.all([
+          client.getBlock('latest'),
+          await client.getBalance(transaction.from)
+        ]);
+
+        const gasPrice = BigNumber.from(transaction.maxFeePerGas);
+        const value = BigNumber.from(transaction.value);
+
+        const maxGasLimit = balance.sub(value).div(gasPrice);
+        if (maxGasLimit.gt(block.gasLimit)) {
+          return block.gasLimit;
+        }
+
+        return maxGasLimit;
+      } catch {
+        return;
+      }
+    });
   }
 }

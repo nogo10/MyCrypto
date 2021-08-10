@@ -1,5 +1,3 @@
-import React from 'react';
-
 import styled from 'styled-components';
 
 import approval from '@assets/images/transactions/approval.svg';
@@ -24,8 +22,9 @@ import {
 } from '@components';
 import { ROUTE_PATHS } from '@config';
 import { getFiat } from '@config/fiats';
-import { ITxHistoryEntry, useRates, useSettings, useTxHistory } from '@services';
+import { ITxHistoryEntry, useRates, useSettings } from '@services';
 import { txIsFailed, txIsPending, txIsSuccessful } from '@services/Store/helpers';
+import { getMergedTxHistory, useSelector } from '@store';
 import { COLORS } from '@theme';
 import { translateRaw } from '@translations';
 import { Asset, ITxStatus, StoreAccount } from '@types';
@@ -165,7 +164,7 @@ const makeTxIcon = (type: ITxHistoryType, asset: Asset) => {
 export default function RecentTransactionList({ accountsList, className = '' }: Props) {
   const { getAssetRate } = useRates();
   const { settings } = useSettings();
-  const { txHistory } = useTxHistory();
+  const txHistory = useSelector(getMergedTxHistory);
   const { isMobile } = useScreenSize();
 
   const accountTxs = txHistory.filter((tx) =>

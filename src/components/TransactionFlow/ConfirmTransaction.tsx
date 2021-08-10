@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 
 import styled from 'styled-components';
 
@@ -7,12 +7,21 @@ import Icon from '@components/Icon';
 import ProtectIconCheck from '@components/icons/ProtectIconCheck';
 import { getFiat } from '@config/fiats';
 import { IFeeAmount, ProtectTxContext } from '@features/ProtectTransaction/ProtectTxProvider';
-import { getAssetByContractAndNetwork, useAssets, useRates } from '@services';
-import { StoreContext, useContacts, useSettings } from '@services/Store';
+import { useRates } from '@services';
+import { useContacts, useNetworks, useSettings } from '@services/Store';
+import { getContractName, getStoreAccounts, useSelector } from '@store';
 import { BREAK_POINTS, COLORS, FONT_SIZE, SPACING } from '@theme';
 import translate, { translateRaw } from '@translations';
-import { ExtendedContact, ISettings, IStepComponentProps, ITxType } from '@types';
-import { bigify, convertToFiat, fromWei, totalTxFeeToString, totalTxFeeToWei, Wei } from '@utils';
+import { ExtendedContact, ISettings, IStepComponentProps, ITxType, Network } from '@types';
+import {
+  bigify,
+  convertToFiat,
+  fromWei,
+  isType2Tx,
+  totalTxFeeToString,
+  totalTxFeeToWei,
+  Wei
+} from '@utils';
 
 import { FromToAccount } from './displays';
 import TransactionDetailsDisplay from './displays/TransactionDetailsDisplay';
@@ -97,22 +106,20 @@ export default function ConfirmTransaction({
   protectTxButton,
   customComponent
 }: IStepComponentProps & { protectTxButton?(): JSX.Element; customComponent?(): JSX.Element }) {
-  const { asset, baseAsset, receiverAddress, network, from, rawTransaction } = txConfig;
+  const { asset, baseAsset, receiverAddress, networkId, from, rawTransaction } = txConfig;
 
   const { getContactByAddressAndNetworkId } = useContacts();
   const { getAssetRate } = useRates();
-  const { assets } = useAssets();
-  const { accounts } = useContext(StoreContext);
+  const accounts = useSelector(getStoreAccounts);
   const { settings } = useSettings();
+  const { getNetworkById } = useNetworks();
+  const network = getNetworkById(networkId);
   const { state: ptxState } = useContext(ProtectTxContext);
-  const ptxFee = (() => {
-    if (ptxState && ptxState.enabled && !ptxState.isPTXFree) {
-      return ptxState.feeAmount;
-    }
-    return undefined;
-  })();
+  const ptxFee =
+    ptxState && ptxState.enabled && !ptxState.isPTXFree ? ptxState.feeAmount : undefined;
   /* Get contact info */
-  const recipientContact = getContactByAddressAndNetworkId(receiverAddress, network.id);
+  const recipientContact =
+    receiverAddress && getContactByAddressAndNetworkId(receiverAddress, network.id);
   const senderContact = getContactByAddressAndNetworkId(from, network.id);
   const sender = constructSenderFromTxConfig(txConfig, accounts);
 
@@ -120,14 +127,7 @@ export default function ConfirmTransaction({
   const assetRate = getAssetRate(asset);
   const baseAssetRate = getAssetRate(baseAsset);
 
-  const contractName = (() => {
-    const contact = getContactByAddressAndNetworkId(rawTransaction.to, network.id);
-    if (contact) {
-      return contact.label;
-    }
-    const asset = getAssetByContractAndNetwork(rawTransaction.to, network)(assets);
-    return asset && asset.name;
-  })();
+  const contractName = useSelector(getContractName(network.id, rawTransaction.to));
 
   return (
     <ConfirmTransactionUI
@@ -146,6 +146,7 @@ export default function ConfirmTransaction({
       protectTxButton={protectTxButton}
       customComponent={customComponent}
       error={error}
+      network={network}
     />
   );
 }
@@ -161,6 +162,7 @@ interface DataProps {
   ptxFee?: IFeeAmount;
   protectTxButton?(): JSX.Element;
   customComponent?(): JSX.Element;
+  network: Network;
 }
 
 type UIProps = Omit<IStepComponentProps, 'resetFlow'> & DataProps;
@@ -180,19 +182,11 @@ export const ConfirmTransactionUI = ({
   ptxFee,
   error,
   protectTxButton,
-  customComponent
+  customComponent,
+  network
 }: UIProps) => {
-  const {
-    asset,
-    gasPrice,
-    gasLimit,
-    amount,
-    receiverAddress,
-    nonce,
-    data,
-    baseAsset,
-    rawTransaction
-  } = txConfig;
+  const { asset, amount, receiverAddress, baseAsset, rawTransaction } = txConfig;
+  const { nonce, data, gasLimit } = rawTransaction;
   const [isBroadcastingTx, setIsBroadcastingTx] = useState(false);
   const handleApprove = () => {
     setIsBroadcastingTx(true);
@@ -205,12 +199,13 @@ export const ConfirmTransactionUI = ({
 
   const assetType = asset.type;
 
+  const gasPrice = isType2Tx(rawTransaction)
+    ? rawTransaction.maxFeePerGas
+    : rawTransaction.gasPrice;
+
   /* Calculate Transaction Fee */
-  const transactionFeeWei = totalTxFeeToWei(rawTransaction.gasPrice, rawTransaction.gasLimit);
-  const maxTransactionFeeBase: string = totalTxFeeToString(
-    rawTransaction.gasPrice,
-    rawTransaction.gasLimit
-  );
+  const transactionFeeWei = totalTxFeeToWei(gasPrice, rawTransaction.gasLimit);
+  const maxTransactionFeeBase = totalTxFeeToString(gasPrice, rawTransaction.gasLimit);
 
   /* Calculate total base asset amount */
   const valueWei = Wei(rawTransaction.value);
@@ -224,20 +219,20 @@ export const ConfirmTransactionUI = ({
   return (
     <ConfirmTransactionWrapper>
       <FromToAccount
-        networkId={sender.network.id}
+        networkId={sender.networkId}
         fromAccount={{
           address: sender.address,
           addressBookEntry: senderContact
         }}
         toAccount={{
-          address: receiverAddress,
+          address: receiverAddress!,
           addressBookEntry: recipientContact
         }}
-        displayToAddress={txType !== ITxType.DEPLOY_CONTRACT}
+        displayToAddress={receiverAddress && txType !== ITxType.DEPLOY_CONTRACT}
       />
       {/* CONTRACT BOX */}
 
-      {isContractCall && (
+      {rawTransaction.to && isContractCall && (
         <div className="TransactionReceipt-row">
           <TxIntermediaryDisplay address={rawTransaction.to} contractName={contractName} />
         </div>
@@ -386,7 +381,6 @@ export const ConfirmTransactionUI = ({
         data={data}
         sender={sender}
         gasLimit={gasLimit}
-        gasPrice={gasPrice}
         nonce={nonce}
         signedTransaction={signedTx}
         fiat={fiat}
@@ -394,6 +388,7 @@ export const ConfirmTransactionUI = ({
         assetRate={assetRate}
         rawTransaction={rawTransaction}
         recipient={rawTransaction.to}
+        network={network}
       />
       {txType === ITxType.DEFIZAP && (
         <DeFiDisclaimerWrapper>{translate('ZAP_CONFIRM_DISCLAIMER')}</DeFiDisclaimerWrapper>

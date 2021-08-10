@@ -1,6 +1,4 @@
-import React from 'react';
-
-import { Identicon } from '@mycrypto/ui';
+import { DerivationPath as DPath } from '@mycrypto/wallets';
 import styled, { css } from 'styled-components';
 
 import {
@@ -16,10 +14,11 @@ import {
   Typography
 } from '@components';
 import { Downloader } from '@components/Downloader';
+import { Identicon } from '@components/Identicon';
 import { DWAccountDisplay, ExtendedDPath, useContacts } from '@services';
 import { BREAK_POINTS, COLORS, SPACING } from '@theme';
 import translate, { Trans } from '@translations';
-import { DPath, ExtendedAsset, Network } from '@types';
+import { ExtendedAsset, Network } from '@types';
 import { bigify, buildAddressUrl, fromTokenBase, useScreenSize } from '@utils';
 import { isEmpty } from '@vendor';
 
@@ -319,7 +318,7 @@ const HDTable = ({
               <br />
               <Trans id="DETERMINISTIC_ALTERNATIVES_4" />{' '}
               <SDownloader data={csv} fileName="accounts.csv" mime="text/csv">
-                <Trans id="DETERMINISTIC_ALTERNATIVES_5" />
+                <Trans id="HERE" />
               </SDownloader>
               .
             </Typography>
@@ -356,7 +355,7 @@ const HDTable = ({
                   <EthAddress address={account.address} truncate={true} />
                 </AddressContainer>
                 <DPathContainer>
-                  <DPathType>{account.pathItem.baseDPath.label.replace(/\(.*?\)/, '')}</DPathType>
+                  <DPathType>{account.pathItem.baseDPath.name.replace(/\(.*?\)/, '')}</DPathType>
                   <DPathDisplay>({account.pathItem.path})</DPathDisplay>
                 </DPathContainer>
                 <ValueContainer>

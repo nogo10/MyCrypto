@@ -1,8 +1,16 @@
-import React from 'react';
-
 import styled from 'styled-components';
 
-import { Box, BusyBottom, Button, Heading, InlineMessage, Spinner, Text, TIcon } from '@components';
+import {
+  Body,
+  Box,
+  BusyBottom,
+  Button,
+  Heading,
+  InlineMessage,
+  Spinner,
+  Text,
+  TIcon
+} from '@components';
 import Icon from '@components/Icon';
 import { EXT_URLS } from '@config';
 import { TDWActionError } from '@services';
@@ -136,6 +144,11 @@ const HardwareWalletUI = ({
           </HardwareConnectBtn>
         )}
       </Text>
+      {walletId === WalletId.LEDGER_NANO_S_NEW && (
+        <Body textAlign="center" fontWeight="bold">
+          {translateRaw('LEDGER_FIRMWARE_NOTICE')}
+        </Body>
+      )}
       <HardwareFooter>
         <BusyBottom
           type={

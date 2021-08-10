@@ -1,5 +1,3 @@
-import React from 'react';
-
 import styled from 'styled-components';
 
 import { Amount } from '@components';
@@ -7,8 +5,8 @@ import Icon from '@components/Icon';
 import { getFiat } from '@config';
 import { BREAK_POINTS, SPACING } from '@theme';
 import translate from '@translations';
-import { ExtendedAsset, ISettings } from '@types';
-import { bigify, convertToFiat, fromWei, totalTxFeeToWei, Wei } from '@utils';
+import { ExtendedAsset, ISettings, ITxObject } from '@types';
+import { bigify, convertToFiat, fromWei, isType2Tx, totalTxFeeToWei, Wei } from '@utils';
 
 const SIcon = styled(Icon)`
   height: 25px;
@@ -24,8 +22,8 @@ interface Props {
   baseAsset: ExtendedAsset;
   settings: ISettings;
   gasUsed: string;
-  gasPrice: string;
   value: string;
+  rawTransaction: ITxObject;
   assetRate?: number;
   baseAssetRate?: number;
 }
@@ -36,11 +34,15 @@ export const TxReceiptTotals = ({
   baseAsset,
   settings,
   gasUsed,
-  gasPrice,
   value,
+  rawTransaction,
   assetRate,
   baseAssetRate
 }: Props) => {
+  const gasPrice = isType2Tx(rawTransaction)
+    ? rawTransaction.maxFeePerGas
+    : rawTransaction.gasPrice;
+
   const feeWei = totalTxFeeToWei(gasPrice, gasUsed);
   const feeFormatted = bigify(fromWei(feeWei, 'ether')).toFixed(6);
   const valueWei = Wei(value);

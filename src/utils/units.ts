@@ -84,7 +84,7 @@ const fromWei = (wei: Wei, unit: UnitKey) => {
 };
 
 const toWei = (value: string, decimal: number): Wei => {
-  const wei = convertedToBaseUnit(value, decimal);
+  const wei = convertedToBaseUnit(bigify(value).toString(10), decimal);
   return Wei(wei);
 };
 
@@ -101,6 +101,9 @@ const convertTokenBase = (value: TokenValue, oldDecimal: number, newDecimal: num
   return toTokenBase(fromTokenBase(value, oldDecimal), newDecimal);
 };
 
+export const getDecimals = (value: string) =>
+  value.includes('.') ? value.split('.')[1].length : 0;
+
 const calculateGasUsedPercentage = (gasLimit: string, gasUsed: string) => {
   const gasLimitBN = bigify(gasLimit);
   const gasUsedBN = bigify(gasUsed);
@@ -108,7 +111,7 @@ const calculateGasUsedPercentage = (gasLimit: string, gasUsed: string) => {
 };
 
 const gasPriceToBase = (price: string | number) =>
-  toWei(price.toString(), getDecimalFromEtherUnit('gwei'));
+  toWei(price.toString(10), getDecimalFromEtherUnit('gwei'));
 
 const totalTxFeeToString = (
   gasPriceEther: string | BigNumber,

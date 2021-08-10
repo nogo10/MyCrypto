@@ -1,6 +1,5 @@
-import React, { Dispatch, SetStateAction, useContext, useState } from 'react';
+import { Dispatch, SetStateAction, useState } from 'react';
 
-import { Identicon } from '@mycrypto/ui';
 import cloneDeep from 'lodash/cloneDeep';
 import isNumber from 'lodash/isNumber';
 import styled from 'styled-components';
@@ -24,21 +23,29 @@ import { getFiat } from '@config/fiats';
 import { useFeatureFlags, useRates } from '@services';
 import {
   getLabelByAccount,
-  StoreContext,
   useAccounts,
   useContacts,
   useNetworks,
   useSettings
 } from '@services/Store';
-import { isScanning as isScanningSelector, useSelector } from '@store';
+import { calculateTotalFiat } from '@services/Store/helpers';
+import {
+  deleteAccount,
+  getAccountUndoCache,
+  isScanning as isScanningSelector,
+  restoreAccount,
+  useDispatch,
+  useSelector
+} from '@store';
 import { BREAK_POINTS, breakpointToNumber, COLORS, SPACING } from '@theme';
 import translate, { translateRaw } from '@translations';
-import { Bigish, ExtendedContact, IAccount, StoreAccount, TUuid, WalletId } from '@types';
+import { Bigish, ExtendedContact, StoreAccount, TUuid, WalletId } from '@types';
 import { truncate, useScreenSize } from '@utils';
 
 import Checkbox from './Checkbox';
 import { default as Currency } from './Currency';
 import { DashboardPanel } from './DashboardPanel';
+import { Identicon } from './Identicon';
 import Tooltip from './Tooltip';
 
 const SDashboardPanel = styled(DashboardPanel)<{ dashboard?: boolean }>`
@@ -140,9 +147,7 @@ export default function AccountList(props: AccountListProps) {
     privacyCheckboxEnabled = false,
     dashboard
   } = props;
-  const { deleteAccountFromCache, restoreDeletedAccount, accountRestore } = useContext(
-    StoreContext
-  );
+  const accountRestore = useSelector(getAccountUndoCache);
   const [deletingIndex, setDeletingIndex] = useState<number | undefined>();
   const [undoDeletingIndexes, setUndoDeletingIndexes] = useState<[number, TUuid][]>([]);
   const overlayRows: [number[], [number, TUuid][]] = [
@@ -199,9 +204,7 @@ export default function AccountList(props: AccountListProps) {
         maxHeight={'430px'}
         {...BuildAccountTable(
           getDisplayAccounts(),
-          deleteAccountFromCache,
           setUndoDeletingIndexes,
-          restoreDeletedAccount,
           deletable,
           copyable,
           privacyCheckboxEnabled,
@@ -285,9 +288,7 @@ const getSortingFunction = (sortKey: ISortTypes): TSortFunction => {
 
 const BuildAccountTable = (
   accounts: StoreAccount[],
-  deleteAccount: (a: IAccount) => void,
   setUndoDeletingIndexes: Dispatch<SetStateAction<[number, TUuid][]>>,
-  restoreDeletedAccount: (accountId: TUuid) => void,
   deletable?: boolean,
   copyable?: boolean,
   privacyCheckboxEnabled?: boolean,
@@ -297,7 +298,6 @@ const BuildAccountTable = (
   const { isMobile } = useScreenSize();
   const { featureFlags } = useFeatureFlags();
   const [sortingState, setSortingState] = useState(initialSortingState);
-  const { totalFiat } = useContext(StoreContext);
   const isScanning = useSelector(isScanningSelector);
   const { getAssetRate } = useRates();
   const { settings } = useSettings();
@@ -305,6 +305,7 @@ const BuildAccountTable = (
   const { getNetworkById } = useNetworks();
   const { toggleAccountPrivacy } = useAccounts();
   const overlayRowsFlat = [...overlayRows![0], ...overlayRows![1].map((row) => row[0])];
+  const dispatch = useDispatch();
 
   const updateSortingState = (id: IColumnValues) => {
     // In case overlay active, disable changing sorting state
@@ -392,7 +393,7 @@ const BuildAccountTable = (
   const getFullTableData = accounts
     .map((account, index) => {
       const addressCard: ExtendedContact | undefined = getLabelByAccount(account, contacts);
-      const total = totalFiat([account])(getAssetRate);
+      const total = calculateTotalFiat([account])(getAssetRate);
       return {
         account,
         index,
@@ -445,7 +446,7 @@ const BuildAccountTable = (
             deleteAction={() => {
               setDeletingIndex(undefined);
               setUndoDeletingIndexes((prev) => [...prev, [indexKey, uuid]]);
-              deleteAccount(account);
+              dispatch(deleteAccount(account));
             }}
             cancelAction={() => setDeletingIndex(undefined)}
           />
@@ -468,7 +469,7 @@ const BuildAccountTable = (
               $walletId: getWalletConfig(wallet).name
             })}
             restoreAccount={() => {
-              restoreDeletedAccount(uuid);
+              dispatch(restoreAccount(uuid));
               setUndoDeletingIndexes((prev) => prev.filter((i) => i[0] !== indexKey));
             }}
           />

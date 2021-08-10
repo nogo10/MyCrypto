@@ -13,7 +13,7 @@ import SwapPage from './swap-page.po';
 import { findByTKey } from './translation-utils';
 
 const swapPage = new SwapPage();
-const dashboard = new DashboardPage();
+const dashboardPage = new DashboardPage();
 
 fixture('Swap')
   .clientScripts({ content: injectLS(FIXTURE_HARDHAT) })
@@ -22,7 +22,7 @@ fixture('Swap')
 test('can do an ETH swap', async (t) => {
   await swapPage.waitPageLoaded();
   await swapPage.setupMock();
-  await resetFork();
+  await resetFork(false);
 
   await swapPage.fillForm();
   await t.wait(FIXTURES_CONST.TIMEOUT);
@@ -42,7 +42,7 @@ test('can do an ETH swap', async (t) => {
 });
 
 test('can do an ERC20 swap', async (t) => {
-  await resetFork();
+  await resetFork(false);
   await setupDAI();
   await swapPage.waitPageLoaded();
   await swapPage.setupMock();
@@ -61,7 +61,7 @@ test('can do an ERC20 swap', async (t) => {
   await t.expect(approve.exists).ok({ timeout: FIXTURES_CONST.HARDHAT_TIMEOUT });
   await t.click(approve);
 
-  await t.wait(FIXTURES_CONST.HARDHAT_TIMEOUT);
+  await t.wait(FIXTURES_CONST.TIMEOUT);
 
   const send = await queryByText(findByTKey('CONFIRM_TRANSACTION')).with({
     timeout: FIXTURES_CONST.HARDHAT_TIMEOUT
@@ -69,17 +69,15 @@ test('can do an ERC20 swap', async (t) => {
   await t.expect(send.exists).ok({ timeout: FIXTURES_CONST.HARDHAT_TIMEOUT });
   await t.click(send);
 
-  await t.wait(FIXTURES_CONST.HARDHAT_TIMEOUT);
-
   await t
-    .expect(queryAllByTestId('SUCCESS').count)
+    .expect(queryAllByTestId('SUCCESS').with({ timeout: FIXTURES_CONST.HARDHAT_TIMEOUT }).count)
     .eql(2, { timeout: FIXTURES_CONST.HARDHAT_TIMEOUT });
 
   const home = await queryByText(findByTKey('NAVIGATION_HOME'));
   await t.click(home);
 
-  await dashboard.waitPageLoaded();
-  const balance = await queryByText('0xBTC', { exact: false });
+  await dashboardPage.waitPageLoaded();
+  const balance = await queryAllByText('1INCH', { exact: false });
 
   await t.expect(balance.exists).ok({ timeout: FIXTURES_CONST.HARDHAT_TIMEOUT });
 });

@@ -42,12 +42,7 @@ export { useInterval } from './useInterval';
 export * from './useStateReducer';
 export { filterObjectOfObjects } from './filterObjectOfObjects';
 export { default as ScrollToTop } from './scrollToTop';
-export {
-  getParam,
-  constructCancelTxQuery,
-  constructSpeedUpTxQuery,
-  createQueryParamsDefaultObject
-} from './queries';
+export * from './queries';
 export { noOp } from './noOp';
 export {
   formatMnemonic,
@@ -92,28 +87,7 @@ export {
 } from './makeExplorer';
 export { verifySignedMessage } from './signing';
 export { stripHexPrefix, stripHexPrefixAndLower } from './stripHexPrefix';
-export {
-  Units,
-  toWei,
-  handleValues,
-  gasPriceToBase,
-  fromWei,
-  toTokenBase,
-  Wei,
-  TokenValue,
-  Address,
-  baseToConvertedUnit,
-  fromTokenBase,
-  totalTxFeeToString,
-  totalTxFeeToWei,
-  gasStringsToMaxGasNumber,
-  gasStringsToMaxGasBN,
-  convertedToBaseUnit,
-  getDecimalFromEtherUnit,
-  convertTokenBase,
-  calculateGasUsedPercentage
-} from './units';
-export { padLeftEven } from './padLeftEven';
+export * from './units';
 export { normalize } from './normalize';
 export {
   hexNonceToViewable,
@@ -135,3 +109,4 @@ export { arrayToObj } from './toObject';
 export { mapAsync, filterAsync } from './asyncFilter';
 export { goBack } from './navigation';
 export { addHexPrefix } from './addHexPrefix';
+export * from './typedTx';

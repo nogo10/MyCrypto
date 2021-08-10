@@ -1,4 +1,4 @@
-import React from 'react';
+import { ComponentProps } from 'react';
 
 import shouldForwardProp from '@styled-system/should-forward-prop';
 import InlineSVG from 'react-inlinesvg';
@@ -35,6 +35,7 @@ import feedback from '@assets/icons/feedback.svg';
 import navAddAccount from '@assets/icons/navigation/add-account.svg';
 import navAssets from '@assets/icons/navigation/assets.svg';
 import navBitcoin from '@assets/icons/navigation/bitcoin.svg';
+import navBlog from '@assets/icons/navigation/blog.svg';
 import navBroadcastTransaction from '@assets/icons/navigation/broadcast-transaction.svg';
 import navBuy from '@assets/icons/navigation/buy.svg';
 import navClose from '@assets/icons/navigation/close.svg';
@@ -49,6 +50,7 @@ import navFaucet from '@assets/icons/navigation/faucet.svg';
 import navGithub from '@assets/icons/navigation/github.svg';
 import navHelp from '@assets/icons/navigation/help.svg';
 import navHome from '@assets/icons/navigation/home.svg';
+import navInstagram from '@assets/icons/navigation/instagram.svg';
 import navInteractWithContracts from '@assets/icons/navigation/interact-with-contracts.svg';
 import navLedger from '@assets/icons/navigation/ledger.svg';
 import navLinkedin from '@assets/icons/navigation/linkedin.svg';
@@ -124,6 +126,7 @@ import warning from '@assets/images/icn-warning.svg';
 import lendLogo from '@assets/images/lend-logo.png';
 import linkOutIcon from '@assets/images/link-out.svg';
 import membership from '@assets/images/membership/membership-none.svg';
+import nodeLogo from '@assets/images/node-logo.svg';
 import repLogo from '@assets/images/rep-logo.svg';
 import swap from '@assets/images/swap copy.svg';
 import uniLogo from '@assets/images/uni-logo.png';
@@ -243,6 +246,7 @@ const svgIcons = {
   'nav-twitter': navTwitter,
   'nav-facebook': navFacebook,
   'nav-medium': navMedium,
+  'nav-instagram': navInstagram,
   'nav-linkedin': navLinkedin,
   'nav-github': navGithub,
   'nav-reddit': navReddit,
@@ -250,6 +254,7 @@ const svgIcons = {
   'nav-team': navTeam,
   'nav-press': navPress,
   'nav-privacy': navPrivacy,
+  'nav-blog': navBlog,
   'nav-new-tab': navNewTab,
   'nav-desktop': navDesktop,
   'nav-ens': navEns,
@@ -266,7 +271,8 @@ const pngIcons = {
   'uni-logo': uniLogo,
   'lend-logo': lendLogo,
   'ant-logo': antLogo,
-  'gol-logo': golemLogo
+  'gol-logo': golemLogo,
+  'node-logo': nodeLogo
 };
 
 type SvgIcons = keyof typeof svgIcons;
@@ -337,7 +343,7 @@ const SDeleteIcon = styled(SInlineSVG)<StylingProps>`
 `;
 
 interface Props
-  extends Omit<React.ComponentProps<typeof SInlineSVG | typeof SImg | typeof SStrokeIcon>, 'src'> {
+  extends Omit<ComponentProps<typeof SInlineSVG | typeof SImg | typeof SStrokeIcon>, 'src'> {
   type: TIcon | 'sort' | 'delete';
 }
 

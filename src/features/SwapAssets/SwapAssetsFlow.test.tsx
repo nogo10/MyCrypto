@@ -1,48 +1,32 @@
-import React from 'react';
-
 import mockAxios from 'jest-mock-axios';
 import selectEvent from 'react-select-event';
 import { APP_STATE, fireEvent, mockAppState, simpleRender, waitFor } from 'test-utils';
 
 import { DEX_BASE_URLS } from '@config';
-import { fAccounts, fAssets, fSwapQuote, fSwapQuoteReverse } from '@fixtures';
-import { StoreContext } from '@services/Store';
+import { fAccounts, fAssets, fDAI, fSwapQuote, fSwapQuoteReverse } from '@fixtures';
+import { NetworkId } from '@types';
 import { truncate } from '@utils';
 
 import SwapAssetsFlow from './SwapAssetsFlow';
 
-function getComponent() {
-  return simpleRender(
-    <StoreContext.Provider
-      value={
-        ({
-          assets: () => fAssets,
-          accounts: fAccounts,
-          userAssets: fAccounts.flatMap((a) => a.assets)
-        } as any) as any
-      }
-    >
-      <SwapAssetsFlow />
-    </StoreContext.Provider>,
-    {
-      initialState: mockAppState({
-        accounts: fAccounts.filter((a) => a.networkId === 'Ethereum'),
-        assets: fAssets,
-        networks: APP_STATE.networks
-      })
-    }
-  );
-}
+jest.mock('@services/ApiService/Gas', () => ({
+  ...jest.requireActual('@services/ApiService/Gas'),
+  fetchGasPriceEstimates: () => Promise.resolve({ fast: 20 }),
+  getGasEstimate: () => Promise.resolve(21000)
+}));
 
-const tokenResponse = {
-  data: {
-    records: [fAssets[0], fAssets[13]].map((a) => ({
-      ...a,
-      symbol: a.ticker,
-      address: a.type === 'base' ? '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' : a.contractAddress
-    }))
-  }
-};
+function getComponent() {
+  return simpleRender(<SwapAssetsFlow />, {
+    initialState: mockAppState({
+      accounts: fAccounts.filter((a) => a.networkId === 'Ethereum'),
+      assets: [...fAssets, { ...fDAI, networkId: 'SmartChain' as NetworkId }].map((a) => ({
+        ...a,
+        isSwapRelevant: true
+      })),
+      networks: APP_STATE.networks
+    })
+  });
+}
 
 describe('SwapAssetsFlow', () => {
   afterEach(() => {
@@ -50,20 +34,12 @@ describe('SwapAssetsFlow', () => {
   });
   it('selects default tokens', async () => {
     const { getAllByText } = getComponent();
-    expect(mockAxios.get).toHaveBeenCalledWith('swap/v1/tokens', {
-      baseURL: DEX_BASE_URLS.Ethereum
-    });
-    mockAxios.mockResponse(tokenResponse);
     await waitFor(() => expect(getAllByText(fAssets[0].ticker, { exact: false })).toBeDefined());
     await waitFor(() => expect(getAllByText(fAssets[13].ticker, { exact: false })).toBeDefined());
   });
 
   it('selects default account', async () => {
     const { getByText } = getComponent();
-    expect(mockAxios.get).toHaveBeenCalledWith('swap/v1/tokens', {
-      baseURL: DEX_BASE_URLS.Ethereum
-    });
-    mockAxios.mockResponse(tokenResponse);
     await waitFor(() =>
       expect(getByText(truncate(fAccounts[0].address), { exact: false })).toBeDefined()
     );
@@ -71,13 +47,8 @@ describe('SwapAssetsFlow', () => {
 
   it('calculates and shows to amount', async () => {
     const { getAllByText, getAllByDisplayValue, container } = getComponent();
-    expect(mockAxios.get).toHaveBeenCalledWith('swap/v1/tokens', {
-      baseURL: DEX_BASE_URLS.Ethereum
-    });
-    mockAxios.mockResponse(tokenResponse);
     await waitFor(() => expect(getAllByText(fAssets[0].ticker, { exact: false })).toBeDefined());
     await waitFor(() => expect(getAllByText(fAssets[13].ticker, { exact: false })).toBeDefined());
-    mockAxios.reset();
     fireEvent.change(container.querySelector('input[name="swap-from"]')!, {
       target: { value: '1' }
     });
@@ -96,13 +67,8 @@ describe('SwapAssetsFlow', () => {
 
   it('calculates and shows from amount', async () => {
     const { getAllByText, getAllByDisplayValue, container } = getComponent();
-    expect(mockAxios.get).toHaveBeenCalledWith('swap/v1/tokens', {
-      baseURL: DEX_BASE_URLS.Ethereum
-    });
-    mockAxios.mockResponse(tokenResponse);
     await waitFor(() => expect(getAllByText(fAssets[0].ticker, { exact: false })).toBeDefined());
     await waitFor(() => expect(getAllByText(fAssets[13].ticker, { exact: false })).toBeDefined());
-    mockAxios.reset();
     fireEvent.change(container.querySelector('input[name="swap-to"]')!, {
       target: { value: '1' }
     });
@@ -129,15 +95,8 @@ describe('SwapAssetsFlow', () => {
     } = getComponent();
     await selectEvent.openMenu(getByLabelText(/network/i));
     fireEvent.click(getByTestId('network-selector-option-SmartChain'));
-    await waitFor(() =>
-      expect(mockAxios.get).toHaveBeenCalledWith('swap/v1/tokens', {
-        baseURL: DEX_BASE_URLS.SmartChain
-      })
-    );
-    mockAxios.mockResponse(tokenResponse);
-    await waitFor(() => expect(getAllByText(fAssets[0].ticker, { exact: false })).toBeDefined());
-    await waitFor(() => expect(getAllByText(fAssets[13].ticker, { exact: false })).toBeDefined());
-    mockAxios.reset();
+    await waitFor(() => expect(getAllByText(fAssets[15].ticker, { exact: false })).toBeDefined());
+    await waitFor(() => expect(getAllByText(fDAI.ticker, { exact: false })).toBeDefined());
     fireEvent.change(container.querySelector('input[name="swap-from"]')!, {
       target: { value: '1' }
     });

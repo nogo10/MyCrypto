@@ -110,3 +110,4 @@ export { mapAsync, filterAsync } from './asyncFilter';
 export { goBack } from './navigation';
 export { addHexPrefix } from './addHexPrefix';
 export * from './typedTx';
+export { default as useTimeout } from './useTimeout';

@@ -21,7 +21,7 @@ import {
   fTxReceipt
 } from '@fixtures';
 import { makeFinishedTxReceipt } from '@helpers';
-import { getTimestampFromBlockNum, getTxStatus, ProviderHandler } from '@services/EthService';
+import { ProviderHandler } from '@services/EthService';
 import { translateRaw } from '@translations';
 import {
   IAccount,
@@ -714,9 +714,10 @@ describe('AccountSlice', () => {
   describe('pendingTxPolling', () => {
     const blockNum = 12568779;
     const timestamp = 1622817966;
-    ProviderHandler.prototype.getTransactionByHash = jest
+    ProviderHandler.prototype.getTransactionReceipt = jest
       .fn()
-      .mockResolvedValue({ blockNumber: blockNum });
+      .mockResolvedValue({ blockNumber: blockNum, status: 1 });
+    ProviderHandler.prototype.getBlockByNumber = jest.fn().mockResolvedValue({ timestamp });
     const pendingTx = {
       ...fTxReceipt,
       gasLimit: BigNumber.from(fTxReceipt.gasLimit),
@@ -742,10 +743,6 @@ describe('AccountSlice', () => {
           }),
           txHistory: { history: [fTxHistoryAPI] }
         })
-        .provide([
-          [call.fn(getTxStatus), ITxStatus.SUCCESS],
-          [call.fn(getTimestampFromBlockNum), timestamp]
-        ])
         .put(
           addTxToAccount({
             account: toStoreAccount(
@@ -867,10 +864,6 @@ describe('AccountSlice', () => {
           }),
           txHistory: { history: [fTxHistoryAPI] }
         })
-        .provide([
-          [call.fn(getTxStatus), undefined],
-          [call.fn(getTimestampFromBlockNum), undefined]
-        ])
         .not.put(
           addTxToAccount({
             account: sanitizeAccount(account),
